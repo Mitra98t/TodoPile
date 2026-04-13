@@ -164,6 +164,7 @@ end
 ---@field jump_after_pop?    boolean  Jump to the new top of the stack after popping (default: true)
 ---@field ghost_text?        boolean         Show the todo text as virtual text at the end of its line (default: false)
 ---@field ghost_text_prefix? boolean|string  Prefix shown before the todo in ghost text: true = marker glyph (default), false = none, string = literal (e.g. "TODO:")
+---@field ghost_text_hl?     string          Highlight group name OR hex color for ghost text, e.g. "DiagnosticHint" or "#ff8800" (default: links to "Comment")
 
 ---@param opts? TodoPileConfig
 function M.setup(opts)
@@ -192,8 +193,17 @@ function M.setup(opts)
   sg.ghost_text_prefix  = opts.ghost_text_prefix == nil and true or opts.ghost_text_prefix
 
   -- Define the TodoPileGhostText highlight group for virtual text.
-  -- Linked to Comment by default so it blends in as a subtle hint.
-  vim.api.nvim_set_hl(0, "TodoPileGhostText", { link = "Comment", default = true })
+  -- Accepts either a hex color string ("#rrggbb") or an existing highlight group name.
+  local ghost_hl = opts.ghost_text_hl
+  if ghost_hl then
+    if ghost_hl:sub(1, 1) == "#" then
+      vim.api.nvim_set_hl(0, "TodoPileGhostText", { fg = ghost_hl })
+    else
+      vim.api.nvim_set_hl(0, "TodoPileGhostText", { link = ghost_hl })
+    end
+  else
+    vim.api.nvim_set_hl(0, "TodoPileGhostText", { link = "Comment", default = true })
+  end
 
   -- Define the TodoPileSign highlight group.
   -- Accepts either a hex color string ("#rrggbb") or an existing highlight group name.

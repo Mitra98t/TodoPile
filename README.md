@@ -46,8 +46,7 @@ require("todo_pile").setup({
   jump_after_pop = true,        -- default: true
 
   -- When true, the todo text is shown as ghost (virtual) text at the end of
-  -- its line. Uses the TodoPileGhostText highlight group (linked to Comment
-  -- by default, override it in your colorscheme config if needed).
+  -- its line.
   ghost_text = false,           -- default: false
 
   -- Prefix displayed before the todo text when ghost_text is enabled.
@@ -55,6 +54,12 @@ require("todo_pile").setup({
   --   false  → no prefix, only the todo text
   --   string → literal prefix, e.g. "TODO:" or "FIXME:"
   ghost_text_prefix = true,     -- default: true (marker glyph)
+
+  -- Highlight applied to the ghost text.
+  -- Accepts a highlight group name or a hex color string.
+  -- Defaults to the TodoPileGhostText group, which is linked to Comment.
+  ghost_text_hl = "Comment",    -- default: links to "Comment"
+  -- ghost_text_hl = "#ff8800", -- hex color alternative
 })
 ```
 
