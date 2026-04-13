@@ -101,13 +101,13 @@ function M.pop()
   refresh_all_signs()
   vim.notify("todo_pile: closed → " .. item.text, vim.log.levels.INFO)
   if M._jump_after_pop then
-    jump_to(store().peek())
+    jump_to(store().peek_in_project(vim.fn.getcwd()))
   end
 end
 
 -- Jump to the file and line of the most recent todo without removing it.
 function M.jump()
-  jump_to(store().peek())
+  jump_to(store().peek_in_project(vim.fn.getcwd()))
 end
 
 -- Open the snacks picker to browse all todos; Enter navigates to the selection.

@@ -1,3 +1,4 @@
+
 -- store.lua
 -- Manages the in-memory todo list and its JSON persistence.
 --
@@ -86,6 +87,17 @@ end
 -- Return the most recent todo without removing it. Returns nil if empty.
 function M.peek()
   return M._todos[#M._todos]
+end
+
+-- Return the most recent todo whose file lives under `dir`. Returns nil if none.
+function M.peek_in_project(dir)
+  for i = #M._todos, 1, -1 do
+    local t = M._todos[i]
+    if vim.startswith(t.file, dir .. "/") or t.file == dir then
+      return t
+    end
+  end
+  return nil
 end
 
 -- Return a shallow-reversed copy of the todo list (newest first).
