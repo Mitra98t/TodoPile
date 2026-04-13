@@ -1,6 +1,8 @@
-# todo_pile
+# Todo Pile
 
-A Neovim plugin that manages a **LIFO stack of todos anchored to code positions**.  
+> A Neovim plugin that manages a **LIFO stack of todos anchored to code positions** to keep in mind the stack
+> of task at hand.
+
 Each todo remembers the file and line where it was created and displays a marker in the sign column whenever that file is open.
 
 ## Requirements

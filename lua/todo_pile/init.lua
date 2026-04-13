@@ -47,7 +47,9 @@ local function jump_to(todo)
   vim.cmd("edit " .. vim.fn.fnameescape(todo.file))
   local line_count = vim.api.nvim_buf_line_count(0)
   local line = math.max(1, math.min(todo.line, line_count))
-  vim.api.nvim_win_set_cursor(0, { line, todo.col })
+  local line_len = #(vim.api.nvim_buf_get_lines(0, line - 1, line, true)[1] or "")
+  local col = math.min(todo.col, line_len)
+  vim.api.nvim_win_set_cursor(0, { line, col })
 end
 
 -- Push a new todo onto the stack at the cursor position.
