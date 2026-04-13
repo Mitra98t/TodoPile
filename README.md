@@ -5,6 +5,11 @@
 
 Each todo remembers the file and line where it was created and displays a marker in the sign column whenever that file is open.
 
+
+![Inline todos showcase](./assets/inline_todos.png)
+
+![List of todos showcase](./assets/todos_list.png)
+
 ## Requirements
 
 - Neovim ≥ 0.10
