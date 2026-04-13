@@ -29,6 +29,13 @@ M.use_first_letter = false
 -- Overridden by setup() via opts.ghost_text.
 M.ghost_text = false
 
+-- Controls the prefix shown before the todo text in ghost text mode.
+--   true   → use the sign glyph (marker symbol or first letter) — default
+--   false  → no prefix, show only the todo text
+--   string → use that string literally as prefix, e.g. "TODO:" or "FIXME:"
+-- Overridden by setup() via opts.ghost_text_prefix.
+M.ghost_text_prefix = true
+
 -- Per-buffer map of todo_id → extmark_id for the currently placed marks.
 -- Used by read_positions() to query Neovim for the live (post-edit) location.
 M._marks = {} -- [bufnr] = { [todo_id] = extmark_id }
@@ -68,7 +75,15 @@ function M.refresh_buf(buf, todos)
         priority      = 10,
       }
       if M.ghost_text then
-        mark_opts.virt_text     = { { "  " .. todo.text, "TodoPileGhostText" } }
+        local prefix
+        if M.ghost_text_prefix == true then
+          prefix = glyph .. " "
+        elseif M.ghost_text_prefix then
+          prefix = M.ghost_text_prefix .. " "
+        else
+          prefix = ""
+        end
+        mark_opts.virt_text     = { { "  " .. prefix .. todo.text, "TodoPileGhostText" } }
         mark_opts.virt_text_pos = "eol"
       end
 

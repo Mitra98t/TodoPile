@@ -162,7 +162,8 @@ end
 ---@field sign_hl?           string   Highlight group name OR hex color, e.g. "DiagnosticHint" or "#ff8800"
 ---@field sign_first_letter? boolean  Use each todo's first letter as its marker instead of sign_text (default: false)
 ---@field jump_after_pop?    boolean  Jump to the new top of the stack after popping (default: true)
----@field ghost_text?        boolean  Show the todo text as virtual text at the end of its line (default: false)
+---@field ghost_text?        boolean         Show the todo text as virtual text at the end of its line (default: false)
+---@field ghost_text_prefix? boolean|string  Prefix shown before the todo in ghost text: true = marker glyph (default), false = none, string = literal (e.g. "TODO:")
 
 ---@param opts? TodoPileConfig
 function M.setup(opts)
@@ -185,9 +186,10 @@ function M.setup(opts)
 
   -- Configure the signs module with the chosen marker options.
   local sg = signs()
-  sg.sign_text        = opts.sign_text or "●"
-  sg.use_first_letter = opts.sign_first_letter or false
-  sg.ghost_text       = opts.ghost_text or false
+  sg.sign_text          = opts.sign_text or "●"
+  sg.use_first_letter   = opts.sign_first_letter or false
+  sg.ghost_text         = opts.ghost_text or false
+  sg.ghost_text_prefix  = opts.ghost_text_prefix == nil and true or opts.ghost_text_prefix
 
   -- Define the TodoPileGhostText highlight group for virtual text.
   -- Linked to Comment by default so it blends in as a subtle hint.

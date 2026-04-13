@@ -49,6 +49,12 @@ require("todo_pile").setup({
   -- its line. Uses the TodoPileGhostText highlight group (linked to Comment
   -- by default, override it in your colorscheme config if needed).
   ghost_text = false,           -- default: false
+
+  -- Prefix displayed before the todo text when ghost_text is enabled.
+  --   true   → the sign column marker glyph (sign_text or first letter) — default
+  --   false  → no prefix, only the todo text
+  --   string → literal prefix, e.g. "TODO:" or "FIXME:"
+  ghost_text_prefix = true,     -- default: true (marker glyph)
 })
 ```
 
