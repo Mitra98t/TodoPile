@@ -21,6 +21,29 @@ local function make_id()
   return tostring(os.time()) .. "_" .. tostring(math.random(10000, 99999))
 end
 
+-- Write the current project todos into the quickfix list (no window side-effects).
+local function update_qflist()
+  local todos = store().all_in_project(vim.fn.getcwd())
+  local qf = {}
+  for _, t in ipairs(todos) do
+    qf[#qf + 1] = { filename = t.file, lnum = t.line, col = t.col + 1, text = t.text }
+  end
+  vim.fn.setqflist({}, "r", { title = "Todo Pile", items = qf })
+end
+
+-- If the quickfix window is open and contains our list, refresh it — or close it
+-- if the project has no todos left (avoids leaving an empty quickfix window open).
+local function refresh_quickfix_if_open()
+  local qf = vim.fn.getqflist({ winid = 1, title = 1 })
+  if qf.winid ~= 0 and qf.title == "Todo Pile" then
+    if #store().all_in_project(vim.fn.getcwd()) == 0 then
+      vim.api.nvim_win_close(qf.winid, true)
+    else
+      update_qflist()
+    end
+  end
+end
+
 -- Re-paint signs in every loaded buffer. Called after any mutation that may
 -- affect multiple files (pop, close, reorder, clear_project).
 local function refresh_all_signs()
@@ -79,6 +102,7 @@ function M.add(text)
     s.add(todo)
     -- Only refresh the current buffer — other buffers are handled by BufEnter.
     signs().refresh_buf(buf, s._todos)
+    refresh_quickfix_if_open()
     vim.notify("todo_pile: added → " .. t, vim.log.levels.INFO)
   end
 
@@ -99,6 +123,7 @@ function M.pop()
     return
   end
   refresh_all_signs()
+  refresh_quickfix_if_open()
   vim.notify("todo_pile: closed → " .. item.text, vim.log.levels.INFO)
   if M._jump_after_pop then
     jump_to(store().peek_in_project(vim.fn.getcwd()))
@@ -110,20 +135,57 @@ function M.jump()
   jump_to(store().peek_in_project(vim.fn.getcwd()))
 end
 
--- Open the snacks picker to browse all todos; Enter navigates to the selection.
-function M.list()
-  picker().list(store(), function(todo)
+-- Open a picker to browse todos; Enter navigates to the selection.
+-- opts.global = true shows all todos, default shows only the current project.
+function M.list(opts)
+  opts = opts or {}
+  local s     = store()
+  local todos = opts.global and s.all_newest_first() or s.all_in_project(vim.fn.getcwd())
+  local title = opts.global and "Todo Pile (all)" or "Todo Pile"
+  picker().list(todos, title, function(todo)
     jump_to(todo)
   end)
 end
 
--- Open the snacks picker to choose which todo to delete.
-function M.close()
-  picker().close_picker(store(), function(todo)
-    store().remove_by_id(todo.id)
+-- Open a picker to choose which todo to delete.
+-- opts.global = true shows all todos, default shows only the current project.
+function M.close(opts)
+  opts = opts or {}
+  local s     = store()
+  local todos = opts.global and s.all_newest_first() or s.all_in_project(vim.fn.getcwd())
+  local title = opts.global and "Close Todo (all)" or "Close Todo"
+  picker().close_picker(todos, title, function(todo)
+    s.remove_by_id(todo.id)
     refresh_all_signs()
+    refresh_quickfix_if_open()
     vim.notify("todo_pile: closed → " .. todo.text, vim.log.levels.INFO)
   end)
+end
+
+-- Populate the quickfix list with todos in the current project and open it.
+function M.quickfix()
+  if #store().all_in_project(vim.fn.getcwd()) == 0 then
+    vim.notify("todo_pile: no todos in this project", vim.log.levels.INFO)
+    return
+  end
+  update_qflist()
+  vim.cmd("copen")
+end
+
+-- Return the total number of todos across all projects.
+function M.count()
+  return #store()._todos
+end
+
+-- Return the number of todos in the current project.
+function M.project_count()
+  return #store().all_in_project(vim.fn.getcwd())
+end
+
+-- Return the text of the top todo in the current project, or "" if none.
+function M.top_text()
+  local t = store().peek_in_project(vim.fn.getcwd())
+  return t and t.text or ""
 end
 
 -- Delete all todos whose files live under the current working directory.
@@ -147,14 +209,18 @@ function M.clear_project()
       if choice ~= "Yes, delete all" then return end
       local removed = store().clear_project(cwd)
       refresh_all_signs()
+      refresh_quickfix_if_open()
       vim.notify(string.format("todo_pile: removed %d todo(s)", removed), vim.log.levels.INFO)
     end
   )
 end
 
--- Open the floating reorder window.
+-- Open the floating reorder window (scoped to the current project).
 function M.reorder()
-  reorder().open(store(), refresh_all_signs)
+  reorder().open(store(), vim.fn.getcwd(), function()
+    refresh_all_signs()
+    refresh_quickfix_if_open()
+  end)
 end
 
 -- ─── Setup ───────────────────────────────────────────────────────────────────

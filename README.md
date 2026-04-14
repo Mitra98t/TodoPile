@@ -13,7 +13,8 @@ Each todo remembers the file and line where it was created and displays a marker
 ## Requirements
 
 - Neovim ≥ 0.10
-- [folke/snacks.nvim](https://github.com/folke/snacks.nvim) _(optional)_ — used for the picker UI; falls back to `vim.ui.select` when not available
+- [folke/snacks.nvim](https://github.com/folke/snacks.nvim) _(optional)_ — preferred picker UI
+- [nvim-telescope/telescope.nvim](https://github.com/nvim-telescope/telescope.nvim) _(optional)_ — used as picker when snacks is not available; falls back to `vim.ui.select` if neither is installed
 
 ## Installation
 
@@ -22,7 +23,8 @@ Each todo remembers the file and line where it was created and displays a marker
 ```lua
 {
   "Mitra98t/TodoPile",
-  dependencies = { "folke/snacks.nvim" },  -- optional, remove if not using snacks in favor of default picker
+  -- optional: add snacks or telescope for a richer picker UI
+  dependencies = { "folke/snacks.nvim" },
   config = function()
     require("todo_pile").setup()
   end,
@@ -72,15 +74,18 @@ require("todo_pile").setup({
 
 ## Commands
 
-| Command                 | Description                                                                                   |
-| ----------------------- | --------------------------------------------------------------------------------------------- |
-| `:TodoPileAdd [text]`   | Add a todo at the cursor position. If `text` is omitted a prompt is shown.                    |
-| `:TodoPilePop`          | Remove the most recent todo. Jumps to the new top if `jump_after_pop` is enabled.             |
-| `:TodoPileJump`         | Jump to the file and line of the most recent todo without removing it.                        |
-| `:TodoPileList`         | Open a picker listing all todos. Select one to navigate to it.                                |
-| `:TodoPileClose`        | Open a picker listing all todos. Select one to delete it.                                     |
-| `:TodoPileReorder`      | Open a floating window to manually reorder the stack.                                         |
-| `:TodoPileClearProject` | Delete all todos whose files belong to the current working directory (asks for confirmation). |
+| Command                  | Description                                                                                   |
+| ------------------------ | --------------------------------------------------------------------------------------------- |
+| `:TodoPileAdd [text]`    | Add a todo at the cursor position. If `text` is omitted a prompt is shown.                    |
+| `:TodoPilePop`           | Remove the most recent todo. Jumps to the new top if `jump_after_pop` is enabled.             |
+| `:TodoPileJump`          | Jump to the file and line of the most recent todo without removing it.                        |
+| `:TodoPileList`          | Open a picker with todos in the current project. Select one to navigate to it.                |
+| `:TodoPileList!`         | Same as above but shows todos from **all** projects.                                          |
+| `:TodoPileClose`         | Open a picker with todos in the current project. Select one to delete it.                     |
+| `:TodoPileClose!`        | Same as above but shows todos from **all** projects.                                          |
+| `:TodoPileQuickfix`      | Populate the quickfix list with todos in the current project and open it.                     |
+| `:TodoPileReorder`       | Open a floating window to manually reorder the stack.                                         |
+| `:TodoPileClearProject`  | Delete all todos whose files belong to the current working directory (asks for confirmation). |
 
 ### Reorder window keymaps
 
@@ -115,6 +120,12 @@ map("n", "<leader>tc", "<cmd>TodoPileClose<cr>",   { desc = "Todo: close one" })
 -- Reorder the stack
 map("n", "<leader>tr", "<cmd>TodoPileReorder<cr>", { desc = "Todo: reorder" })
 
+-- Browse todos from all projects
+map("n", "<leader>tL", "<cmd>TodoPileList!<cr>",       { desc = "Todo: list all projects" })
+
+-- Send todos to the quickfix list
+map("n", "<leader>tq", "<cmd>TodoPileQuickfix<cr>",    { desc = "Todo: quickfix list" })
+
 -- Clear all todos for the current project
 map("n", "<leader>tX", "<cmd>TodoPileClearProject<cr>", { desc = "Todo: clear project" })
 ```
@@ -123,7 +134,7 @@ map("n", "<leader>tX", "<cmd>TodoPileClearProject<cr>", { desc = "Todo: clear pr
 
 ```lua
 {
-  dir = "~/dev/nvim/todo_pile",
+  "Mitra98t/TodoPile",
   dependencies = { "folke/snacks.nvim" },
   keys = {
     { "<leader>ta", "<cmd>TodoPileAdd<cr>",          desc = "Todo: add" },
@@ -132,7 +143,9 @@ map("n", "<leader>tX", "<cmd>TodoPileClearProject<cr>", { desc = "Todo: clear pr
     { "<leader>tl", "<cmd>TodoPileList<cr>",         desc = "Todo: list" },
     { "<leader>tc", "<cmd>TodoPileClose<cr>",        desc = "Todo: close one" },
     { "<leader>tr", "<cmd>TodoPileReorder<cr>",      desc = "Todo: reorder" },
-    { "<leader>tX", "<cmd>TodoPileClearProject<cr>", desc = "Todo: clear project" },
+    { "<leader>tL", "<cmd>TodoPileList!<cr>",         desc = "Todo: list all projects" },
+    { "<leader>tq", "<cmd>TodoPileQuickfix<cr>",      desc = "Todo: quickfix list" },
+    { "<leader>tX", "<cmd>TodoPileClearProject<cr>",  desc = "Todo: clear project" },
   },
   config = function()
     require("todo_pile").setup({
@@ -140,6 +153,28 @@ map("n", "<leader>tX", "<cmd>TodoPileClearProject<cr>", { desc = "Todo: clear pr
       sign_hl        = "DiagnosticHint",
       jump_after_pop = true,
     })
+  end,
+}
+```
+
+## Statusline integration
+
+TodoPile exposes a few functions you can embed in any statusline plugin:
+
+| Function                              | Returns                                              |
+| ------------------------------------- | ---------------------------------------------------- |
+| `require("todo_pile").count()`        | Total number of todos across all projects            |
+| `require("todo_pile").project_count()` | Number of todos in the current working directory    |
+| `require("todo_pile").top_text()`     | Text of the top todo in the current project, or `""` |
+
+**lualine example:**
+
+```lua
+-- in your lualine sections
+{
+  function()
+    local n = require("todo_pile").project_count()
+    return n > 0 and ("● " .. n) or ""
   end,
 }
 ```

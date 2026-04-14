@@ -1,12 +1,11 @@
 -- picker.lua
--- Todo selection UI with a snacks.nvim picker and a vim.ui.select fallback.
+-- Todo selection UI with snacks.nvim, telescope.nvim, and a vim.ui.select fallback.
 --
 -- Two operations are exposed:
---   list()         — browse todos and navigate to the selected one
---   close_picker() — browse todos and delete the selected one
+--   list(todos, title, on_confirm)   — browse todos and navigate to the selected one
+--   close_picker(todos, title, on_delete) — browse todos and delete the selected one
 --
--- If snacks.nvim is not available the same operations work via vim.ui.select,
--- which itself can be overridden by telescope, fzf-lua, etc.
+-- Picker preference order: snacks → telescope → vim.ui.select
 
 local M = {}
 
@@ -62,7 +61,7 @@ local function make_select_labels(todos)
   return labels
 end
 
--- ─── Availability check ───────────────────────────────────────────────────────
+-- ─── Availability checks ─────────────────────────────────────────────────────
 
 -- Returns the snacks module if it is loadable and exposes a picker, else nil.
 local function get_snacks()
@@ -72,11 +71,54 @@ local function get_snacks()
   end
 end
 
+-- Returns true if telescope.nvim is available.
+local function get_telescope()
+  local ok, tel = pcall(require, "telescope")
+  if ok and tel then return true end
+end
+
+-- ─── Telescope implementation ─────────────────────────────────────────────────
+
+local function telescope_pick(todos, title, on_confirm)
+  local pickers      = require("telescope.pickers")
+  local finders      = require("telescope.finders")
+  local conf         = require("telescope.config").values
+  local actions      = require("telescope.actions")
+  local action_state = require("telescope.actions.state")
+
+  pickers.new({}, {
+    prompt_title = title,
+    finder = finders.new_table({
+      results = todos,
+      entry_maker = function(todo)
+        local short_file = vim.fn.fnamemodify(todo.file, ":~:.")
+        return {
+          value    = todo,
+          display  = string.format("%-40s  %s:%d", todo.text:sub(1, 40), short_file, todo.line),
+          ordinal  = todo.text .. " " .. short_file,
+          filename = todo.file,
+          lnum     = todo.line,
+          col      = todo.col,
+        }
+      end,
+    }),
+    sorter    = conf.generic_sorter({}),
+    previewer = conf.file_previewer({}),
+    attach_mappings = function(prompt_bufnr, _map)
+      actions.select_default:replace(function()
+        actions.close(prompt_bufnr)
+        local sel = action_state.get_selected_entry()
+        if sel and on_confirm then on_confirm(sel.value) end
+      end)
+      return true
+    end,
+  }):find()
+end
+
 -- ─── Public API ───────────────────────────────────────────────────────────────
 
--- Open a picker listing all todos. Selecting an item calls on_confirm(todo).
-function M.list(store, on_confirm)
-  local todos = store.all_newest_first()
+-- Open a picker listing the given todos. Selecting an item calls on_confirm(todo).
+function M.list(todos, title, on_confirm)
   if #todos == 0 then
     vim.notify("todo_pile: no todos", vim.log.levels.INFO)
     return
@@ -85,7 +127,7 @@ function M.list(store, on_confirm)
   local snacks = get_snacks()
   if snacks then
     snacks.picker.pick("todo_pile_list", {
-      title   = " Todo Pile",
+      title   = " " .. title,
       items   = make_items(todos),
       format  = format_item,
       confirm = function(picker, item)
@@ -93,17 +135,18 @@ function M.list(store, on_confirm)
         if item and on_confirm then on_confirm(item._todo) end
       end,
     })
+  elseif get_telescope() then
+    telescope_pick(todos, title, on_confirm)
   else
     -- Fallback: vim.ui.select with a plain-text label per todo.
-    vim.ui.select(make_select_labels(todos), { prompt = "Todo Pile: navigate to" }, function(_, idx)
+    vim.ui.select(make_select_labels(todos), { prompt = title .. ": navigate to" }, function(_, idx)
       if idx and on_confirm then on_confirm(todos[idx]) end
     end)
   end
 end
 
 -- Open a picker for selective deletion. Selecting an item calls on_delete(todo).
-function M.close_picker(store, on_delete)
-  local todos = store.all_newest_first()
+function M.close_picker(todos, title, on_delete)
   if #todos == 0 then
     vim.notify("todo_pile: no todos to close", vim.log.levels.INFO)
     return
@@ -112,7 +155,7 @@ function M.close_picker(store, on_delete)
   local snacks = get_snacks()
   if snacks then
     snacks.picker.pick("todo_pile_close", {
-      title   = " Close Todo",
+      title   = " " .. title,
       items   = make_items(todos),
       format  = format_item,
       confirm = function(picker, item)
@@ -120,9 +163,11 @@ function M.close_picker(store, on_delete)
         if item and on_delete then on_delete(item._todo) end
       end,
     })
+  elseif get_telescope() then
+    telescope_pick(todos, title, on_delete)
   else
     -- Fallback: vim.ui.select with the same plain-text labels.
-    vim.ui.select(make_select_labels(todos), { prompt = "Todo Pile: select to close" }, function(_, idx)
+    vim.ui.select(make_select_labels(todos), { prompt = title .. ": select to close" }, function(_, idx)
       if idx and on_delete then on_delete(todos[idx]) end
     end)
   end

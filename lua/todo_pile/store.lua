@@ -110,4 +110,16 @@ function M.all_newest_first()
   return rev
 end
 
+-- Return todos whose file lives under `dir`, newest first.
+function M.all_in_project(dir)
+  local rev = {}
+  for i = #M._todos, 1, -1 do
+    local t = M._todos[i]
+    if vim.startswith(t.file, dir .. "/") or t.file == dir then
+      rev[#rev + 1] = t
+    end
+  end
+  return rev
+end
+
 return M

@@ -27,15 +27,22 @@ vim.api.nvim_create_user_command("TodoPileJump",
   function() require("todo_pile").jump() end,
   { desc = "todo_pile: jump to top of todo stack" })
 
--- Browse all todos in a snacks picker; Enter navigates to the selection.
+-- Browse todos in a picker; Enter navigates to the selection.
+-- Use ! to show todos from all projects instead of just the current one.
 vim.api.nvim_create_user_command("TodoPileList",
-  function() require("todo_pile").list() end,
-  { desc = "todo_pile: list todos (navigate)" })
+  function(opts) require("todo_pile").list({ global = opts.bang }) end,
+  { bang = true, desc = "todo_pile: list todos (! for all projects)" })
 
--- Choose a specific todo to delete via snacks picker.
+-- Choose a specific todo to delete via picker.
+-- Use ! to show todos from all projects instead of just the current one.
 vim.api.nvim_create_user_command("TodoPileClose",
-  function() require("todo_pile").close() end,
-  { desc = "todo_pile: select a todo to close" })
+  function(opts) require("todo_pile").close({ global = opts.bang }) end,
+  { bang = true, desc = "todo_pile: select a todo to close (! for all projects)" })
+
+-- Populate the quickfix list with todos in the current project.
+vim.api.nvim_create_user_command("TodoPileQuickfix",
+  function() require("todo_pile").quickfix() end,
+  { desc = "todo_pile: populate quickfix list with project todos" })
 
 -- Open the floating window to manually reorder the stack.
 vim.api.nvim_create_user_command("TodoPileReorder",

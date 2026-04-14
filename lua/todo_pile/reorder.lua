@@ -49,11 +49,12 @@ local function close_win()
 end
 
 ---@param store_mod  table   require("todo_pile.store")
+---@param dir        string  current working directory (project scope)
 ---@param refresh_fn fun()   callback that repaints signs after the order changes
-function M.open(store_mod, refresh_fn)
-  local todos = store_mod.all_newest_first()
+function M.open(store_mod, dir, refresh_fn)
+  local todos = store_mod.all_in_project(dir)
   if #todos == 0 then
-    vim.notify("todo_pile: no todos to reorder", vim.log.levels.INFO)
+    vim.notify("todo_pile: no todos to reorder in this project", vim.log.levels.INFO)
     return
   end
 
@@ -85,7 +86,7 @@ function M.open(store_mod, refresh_fn)
     col        = col,
     style      = "minimal",
     border     = "rounded",
-    title      = " Reorder Todo Pile ",
+    title      = " Reorder Todo Pile (project) ",
     title_pos  = "center",
     footer     = " <C-k/j> move  <CR> save  q cancel ",
     footer_pos = "center",
@@ -99,14 +100,26 @@ function M.open(store_mod, refresh_fn)
   vim.keymap.set("n", "<C-Down>", function() move_line(1)  end, opts)
   vim.keymap.set("n", "<C-Up>",   function() move_line(-1) end, opts)
 
-  -- Confirm: reverse _order (display is newest-first; store expects oldest-first)
-  -- then write back to the store and refresh signs.
+  -- Confirm: reverse _order (display is newest-first; store expects oldest-first),
+  -- then merge with non-project todos and write back to the store.
   vim.keymap.set("n", "<CR>", function()
-    local new_todos = {}
-    for i = #_order, 1, -1 do
-      new_todos[#new_todos + 1] = _order[i]
+    -- Collect todos that belong to other projects (preserve their order).
+    local non_project = {}
+    for _, t in ipairs(store_mod._todos) do
+      if not (vim.startswith(t.file, dir .. "/") or t.file == dir) then
+        non_project[#non_project + 1] = t
+      end
     end
-    store_mod._todos = new_todos
+    -- Reverse display order to get oldest-first for storage.
+    local reordered = {}
+    for i = #_order, 1, -1 do
+      reordered[#reordered + 1] = _order[i]
+    end
+    -- Non-project todos first, then reordered project todos (project = "newer" end).
+    local merged = {}
+    for _, t in ipairs(non_project) do merged[#merged + 1] = t end
+    for _, t in ipairs(reordered)   do merged[#merged + 1] = t end
+    store_mod._todos = merged
     store_mod.save()
     refresh_fn()
     close_win()
